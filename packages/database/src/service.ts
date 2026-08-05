@@ -9,6 +9,18 @@ let inMemoryConversations: Conversation[] = [];
 let inMemoryMessages: Record<string, Message[]> = {};
 let currentActiveUserId = 'usr_guest';
 
+function isValidUuid(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+function sanitizeProfileForDb(profile: Partial<UserProfile>): Record<string, any> {
+  const { interests, skills, goals, campus_name, role, is_blocked, ...dbFields } = profile as any;
+  if (dbFields.campus_id && !isValidUuid(dbFields.campus_id)) {
+    delete dbFields.campus_id;
+  }
+  return dbFields;
+}
+
 export const DataService = {
   isLiveMode(): boolean {
     return isSupabaseConfigured;
@@ -168,8 +180,10 @@ export const DataService = {
           created_at: now,
           updated_at: now,
         };
-        await supabase.from('profiles').upsert(newProfile);
+        await supabase.from('profiles').upsert(sanitizeProfileForDb(newProfile));
         currentActiveUserId = newProfile.id;
+        inMemoryProfiles = inMemoryProfiles.filter((p) => p.user_id !== newProfile.user_id);
+        inMemoryProfiles.push(newProfile);
         return newProfile;
       }
     }
@@ -190,9 +204,33 @@ export const DataService = {
           .eq('user_id', data.user.id)
           .single();
 
+        currentActiveUserId = data.user.id;
+
         if (profileData) {
-          currentActiveUserId = profileData.id;
-          return profileData as unknown as UserProfile;
+          const cached = inMemoryProfiles.find((p) => p.user_id === data.user.id || p.id === data.user.id);
+          const raw = profileData as any;
+          const merged: UserProfile = {
+            id: raw.id || data.user.id,
+            user_id: raw.user_id || data.user.id,
+            display_name: raw.display_name || cached?.display_name || '',
+            username: raw.username || cached?.username || '',
+            avatar_url: raw.avatar_url || cached?.avatar_url || '',
+            bio: raw.bio || cached?.bio || '',
+            campus_id: raw.campus_id || cached?.campus_id || '',
+            campus_name: cached?.campus_name || raw.campus_name || '',
+            department: raw.department || cached?.department || '',
+            level: raw.level || cached?.level || '',
+            interests: cached?.interests || raw.interests || [],
+            skills: cached?.skills || raw.skills || [],
+            goals: cached?.goals || raw.goals || [],
+            social_links: raw.social_links || cached?.social_links,
+            is_onboarded: Boolean(raw.is_onboarded ?? cached?.is_onboarded),
+            role: raw.role || cached?.role || 'user',
+            is_blocked: Boolean(raw.is_blocked ?? cached?.is_blocked),
+            created_at: raw.created_at || cached?.created_at || new Date().toISOString(),
+            updated_at: raw.updated_at || cached?.updated_at || new Date().toISOString(),
+          };
+          return merged;
         }
 
         // Create clean profile without assumed dummy data
@@ -216,8 +254,9 @@ export const DataService = {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        await supabase.from('profiles').upsert(newProfile);
-        currentActiveUserId = newProfile.id;
+        await supabase.from('profiles').upsert(sanitizeProfileForDb(newProfile));
+        inMemoryProfiles = inMemoryProfiles.filter((p) => p.user_id !== newProfile.user_id);
+        inMemoryProfiles.push(newProfile);
         return newProfile;
       }
     }
@@ -287,13 +326,40 @@ export const DataService = {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          currentActiveUserId = user.id;
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('user_id', user.id)
             .single();
 
-          if (profile) return profile as unknown as UserProfile;
+          const cached = inMemoryProfiles.find((p) => p.user_id === user.id || p.id === user.id);
+
+          if (profile) {
+            const raw = profile as any;
+            const merged: UserProfile = {
+              id: raw.id || user.id,
+              user_id: raw.user_id || user.id,
+              display_name: raw.display_name || cached?.display_name || '',
+              username: raw.username || cached?.username || '',
+              avatar_url: raw.avatar_url || cached?.avatar_url || '',
+              bio: raw.bio || cached?.bio || '',
+              campus_id: raw.campus_id || cached?.campus_id || '',
+              campus_name: cached?.campus_name || raw.campus_name || '',
+              department: raw.department || cached?.department || '',
+              level: raw.level || cached?.level || '',
+              interests: cached?.interests || raw.interests || [],
+              skills: cached?.skills || raw.skills || [],
+              goals: cached?.goals || raw.goals || [],
+              social_links: raw.social_links || cached?.social_links,
+              is_onboarded: Boolean(raw.is_onboarded ?? cached?.is_onboarded),
+              role: raw.role || cached?.role || 'user',
+              is_blocked: Boolean(raw.is_blocked ?? cached?.is_blocked),
+              created_at: raw.created_at || cached?.created_at || new Date().toISOString(),
+              updated_at: raw.updated_at || cached?.updated_at || new Date().toISOString(),
+            };
+            return merged;
+          }
 
           // If authenticated but profile doesn't exist yet, create a clean unpopulated profile
           const now = new Date().toISOString();
@@ -317,8 +383,9 @@ export const DataService = {
             created_at: now,
             updated_at: now,
           };
-          await supabase.from('profiles').upsert(newProfile);
-          currentActiveUserId = newProfile.id;
+          await supabase.from('profiles').upsert(sanitizeProfileForDb(newProfile));
+          inMemoryProfiles = inMemoryProfiles.filter((p) => p.user_id !== newProfile.user_id);
+          inMemoryProfiles.push(newProfile);
           return newProfile;
         }
         return null;
@@ -328,39 +395,76 @@ export const DataService = {
       }
     }
 
-    const current = inMemoryProfiles.find((p) => p.id === currentActiveUserId);
+    const current = inMemoryProfiles.find((p) => p.id === currentActiveUserId || p.user_id === currentActiveUserId);
     if (current) return current;
     return null;
   },
 
   async updateProfile(profileData: Partial<UserProfile>): Promise<UserProfile> {
+    const activeId = currentActiveUserId;
+    const updated_at = new Date().toISOString();
+
     if (supabase) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const updated_at = new Date().toISOString();
+        const targetUserId = user?.id || activeId;
+        if (targetUserId) {
+          const dbPayload = sanitizeProfileForDb({ ...profileData, user_id: targetUserId, updated_at });
           const { data, error } = await supabase
             .from('profiles')
-            .update({ ...profileData, updated_at })
-            .eq('user_id', user.id)
+            .upsert(dbPayload, { onConflict: 'user_id' })
             .select()
             .single();
 
-          if (!error && data) return data as unknown as UserProfile;
+          if (error) {
+            console.warn('Supabase updateProfile DB error:', error);
+          }
+
+          const existingIdx = inMemoryProfiles.findIndex((p) => p.id === targetUserId || p.user_id === targetUserId);
+          const existing = existingIdx !== -1 ? inMemoryProfiles[existingIdx] : null;
+
+          const updatedFullObj: UserProfile = {
+            id: targetUserId,
+            user_id: targetUserId,
+            display_name: data?.display_name ?? profileData.display_name ?? existing?.display_name ?? '',
+            username: data?.username ?? profileData.username ?? existing?.username ?? '',
+            avatar_url: data?.avatar_url ?? profileData.avatar_url ?? existing?.avatar_url ?? '',
+            bio: data?.bio ?? profileData.bio ?? existing?.bio ?? '',
+            campus_id: data?.campus_id ?? profileData.campus_id ?? existing?.campus_id ?? '',
+            campus_name: profileData.campus_name ?? existing?.campus_name ?? '',
+            department: data?.department ?? profileData.department ?? existing?.department ?? '',
+            level: data?.level ?? profileData.level ?? existing?.level ?? '',
+            interests: profileData.interests ?? existing?.interests ?? [],
+            skills: profileData.skills ?? existing?.skills ?? [],
+            goals: profileData.goals ?? existing?.goals ?? [],
+            is_onboarded: data?.is_onboarded ?? profileData.is_onboarded ?? existing?.is_onboarded ?? true,
+            role: data?.role ?? profileData.role ?? existing?.role ?? 'user',
+            is_blocked: data?.is_blocked ?? profileData.is_blocked ?? existing?.is_blocked ?? false,
+            created_at: data?.created_at ?? existing?.created_at ?? new Date().toISOString(),
+            updated_at,
+          };
+
+          if (existingIdx !== -1) {
+            inMemoryProfiles[existingIdx] = updatedFullObj;
+          } else {
+            inMemoryProfiles.push(updatedFullObj);
+          }
+
+          return updatedFullObj;
         }
       } catch (e) {
         console.warn('Supabase updateProfile error:', e);
       }
     }
 
-    const idx = inMemoryProfiles.findIndex((p) => p.id === currentActiveUserId);
+    const idx = inMemoryProfiles.findIndex((p) => p.id === activeId || p.user_id === activeId);
     if (idx !== -1) {
-      inMemoryProfiles[idx] = { ...inMemoryProfiles[idx], ...profileData, updated_at: new Date().toISOString() };
+      inMemoryProfiles[idx] = { ...inMemoryProfiles[idx], ...profileData, updated_at };
       return inMemoryProfiles[idx];
     }
     const newProf: UserProfile = {
-      id: currentActiveUserId,
-      user_id: currentActiveUserId,
+      id: activeId,
+      user_id: activeId,
       display_name: '',
       username: '',
       avatar_url: '',
@@ -372,11 +476,11 @@ export const DataService = {
       interests: [],
       skills: [],
       goals: [],
-      is_onboarded: false,
+      is_onboarded: true,
       role: 'user',
       is_blocked: false,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      updated_at,
       ...profileData,
     };
     inMemoryProfiles.push(newProf);
@@ -400,9 +504,10 @@ export const DataService = {
     const updated_at = new Date().toISOString();
     if (supabase) {
       try {
+        const dbPayload = sanitizeProfileForDb({ ...updates, updated_at });
         const { data, error } = await supabase
           .from('profiles')
-          .update({ ...updates, updated_at })
+          .update(dbPayload)
           .eq('id', targetUserId)
           .select()
           .single();

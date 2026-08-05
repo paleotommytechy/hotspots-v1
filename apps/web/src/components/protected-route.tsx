@@ -28,12 +28,12 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       router.replace('/auth');
     } else if (isAuthenticated) {
-      const isOnboarded = Boolean(user?.is_onboarded && user?.display_name && user?.campus_id);
+      const isOnboarded = Boolean(user?.is_onboarded);
       if (!isOnboarded && pathname !== '/onboarding') {
         router.replace('/onboarding');
       } else if (isOnboarded && (pathname === '/auth' || pathname === '/onboarding')) {
         hasWarnedRef.current = false;
-        router.replace('/discover');
+        router.replace('/');
       } else {
         hasWarnedRef.current = false;
       }

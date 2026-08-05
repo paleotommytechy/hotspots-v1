@@ -201,7 +201,7 @@ export default function OnboardingPage() {
 
     await refreshUser();
     toast.success('Your profile is set up! Welcome to Hotspots!');
-    router.push('/discover');
+    router.push('/');
   };
 
   return (
