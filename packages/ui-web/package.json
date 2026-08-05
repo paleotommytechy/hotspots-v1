@@ -9,7 +9,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@hotspots/design-tokens": "*",
+    "@hotspots/design-tokens": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.383.0",
     "tailwind-merge": "^2.3.0"
