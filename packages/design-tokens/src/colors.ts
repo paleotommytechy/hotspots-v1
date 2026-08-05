@@ -1,0 +1,42 @@
+export const colors = {
+  brand: {
+    red: '#C62828',
+    redHover: '#A91F1F',
+    orange: '#F57C00',
+    green: '#2E7D32',
+    darkGray: '#2B2B2B',
+  },
+  warm: {
+    beige: '#F3E5AB',
+    lightYellow: '#FFF3C4',
+    yellowOrange: '#FFC857',
+  },
+  natural: {
+    lightGreen: '#A1C181',
+    teal: '#619B8A',
+    darkBlue: '#233D4D',
+  },
+  deep: {
+    darkGreen: '#203C3B',
+    slateGreen: '#447270',
+    lightSlate: '#6B9493',
+    yellow: '#F6E271',
+    goldenYellow: '#F6B915',
+    orange: '#F69312',
+  },
+  semantic: {
+    primary: '#C62828',
+    primaryHover: '#A91F1F',
+    secondary: '#F57C00',
+    success: '#2E7D32',
+    info: '#619B8A',
+    accent: '#FFC857',
+    background: '#FFF3C4',
+    surface: '#FFFFFF',
+    warmSurface: '#F3E5AB',
+    text: '#2B2B2B',
+    mutedText: '#414643',
+    border: '#EAE3C3',
+    darkSurface: '#203C3B',
+  },
+} as const;

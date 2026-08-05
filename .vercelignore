@@ -1,0 +1,6 @@
+.system_generated
+.antigravity
+node_modules
+.next
+dist
+*.log
