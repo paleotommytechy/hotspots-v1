@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { UserProfile } from '@hotspots/types';
-import { DataService } from '@hotspots/database';
+import { DataService, supabase } from '@hotspots/database';
 import { useToast } from '@hotspots/ui-web';
 
 interface AuthContextValue {
@@ -14,6 +14,7 @@ interface AuthContextValue {
   loginWithGoogle: () => Promise<void>;
   signup: (email?: string, password?: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -28,37 +29,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session on initial load
+  // Restore and sync Supabase session
   useEffect(() => {
-    async function restoreSession() {
+    let mounted = true;
+
+    async function syncSession() {
       try {
         const cur = await DataService.getCurrentProfile();
-        if (cur) {
+        if (mounted) {
           setUser(cur);
-        } else {
-          const storedSession = typeof window !== 'undefined' ? localStorage.getItem(AUTH_STORAGE_KEY) : null;
-          if (!storedSession) {
-            setUser(null);
-          }
         }
       } catch (e) {
-        setUser(null);
+        if (mounted) setUser(null);
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     }
-    restoreSession();
+
+    syncSession();
+
+    let subscription: any = null;
+    if (supabase) {
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          const profile = await DataService.getCurrentProfile();
+          if (mounted) setUser(profile);
+        } else {
+          if (mounted) setUser(null);
+        }
+        if (mounted) setIsLoading(false);
+      });
+      subscription = data.subscription;
+    }
+
+    return () => {
+      mounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const login = async (email?: string, password?: string) => {
     setIsLoading(true);
     try {
-      let cur: UserProfile | null = null;
-      if (email && password) {
-        cur = await DataService.signInWithSupabase(email, password);
-      } else {
-        cur = await DataService.getCurrentProfile();
+      if (!email || !password) {
+        throw new Error('Please enter both email and password.');
       }
+      const cur = await DataService.signInWithSupabase(email, password);
 
       if (!cur) {
         throw new Error('User profile not found.');
@@ -72,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       router.push('/discover');
     } catch (e: any) {
       toast.error(e?.message || 'Authentication failed. Please check your credentials.');
+      throw e;
     } finally {
       setIsLoading(false);
     }
@@ -80,17 +99,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     setIsLoading(true);
     try {
-      const cur = await DataService.signInWithGoogle();
-      if (!cur) throw new Error('Could not retrieve Google profile.');
-      setUser(cur);
+      await DataService.signInWithGoogle();
       if (typeof window !== 'undefined') {
         localStorage.setItem(AUTH_STORAGE_KEY, 'google');
       }
-      toast.success(`Signed in with Google as ${cur.display_name}!`);
-      router.push('/discover');
     } catch (e: any) {
       toast.error(e?.message || 'Google Sign In failed. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -98,12 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (email?: string, password?: string) => {
     setIsLoading(true);
     try {
-      let cur: UserProfile | null = null;
-      if (email && password) {
-        cur = await DataService.signUpWithSupabase(email, password);
-      } else {
-        cur = await DataService.getCurrentProfile();
+      if (!email || !password) {
+        throw new Error('Please provide email and password.');
       }
+      const cur = await DataService.signUpWithSupabase(email, password);
 
       if (!cur) {
         throw new Error('Failed to initialize user profile.');
@@ -113,10 +125,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (typeof window !== 'undefined') {
         localStorage.setItem(AUTH_STORAGE_KEY, 'active');
       }
-      toast.success(`Account created successfully! Welcome to Hotspots, ${cur.display_name}.`);
+      toast.success(`Account created! Welcome to Hotspots, ${cur.display_name}.`);
       router.push('/onboarding');
     } catch (e: any) {
       toast.error(e?.message || 'Failed to create account. Please try again.');
+      throw e;
     } finally {
       setIsLoading(false);
     }
@@ -125,14 +138,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setIsLoading(true);
     try {
+      await DataService.signOut();
       setUser(null);
       if (typeof window !== 'undefined') {
         localStorage.removeItem(AUTH_STORAGE_KEY);
       }
       toast.info('You have been signed out.');
-      router.push('/');
+      router.push('/auth');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const updated = await DataService.getCurrentProfile();
+      setUser(updated);
+    } catch (e) {
+      console.warn('Error refreshing profile:', e);
     }
   };
 
@@ -146,6 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginWithGoogle,
         signup,
         logout,
+        refreshUser,
       }}
     >
       {children}

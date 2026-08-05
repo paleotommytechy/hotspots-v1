@@ -49,6 +49,8 @@ export interface UserProfile {
   goals: Goal[];
   social_links?: SocialLinks;
   is_onboarded: boolean;
+  role?: 'admin' | 'user';
+  is_blocked?: boolean;
   created_at: string;
   updated_at: string;
 }

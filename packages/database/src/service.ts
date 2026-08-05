@@ -151,18 +151,20 @@ export const DataService = {
         const newProfile: UserProfile = {
           id: data.user.id,
           user_id: data.user.id,
-          display_name: email.split('@')[0],
-          username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, ''),
-          avatar_url: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80`,
-          bio: 'New student on Hotspots!',
-          campus_id: MOCK_CAMPUSES[0].id,
-          campus_name: MOCK_CAMPUSES[0].name,
-          department: 'Computer Science',
-          level: 'Undergraduate',
+          display_name: '',
+          username: '',
+          avatar_url: '',
+          bio: '',
+          campus_id: '',
+          campus_name: '',
+          department: '',
+          level: '',
           interests: [],
           skills: [],
           goals: [],
           is_onboarded: false,
+          role: 'user',
+          is_blocked: false,
           created_at: now,
           updated_at: now,
         };
@@ -172,27 +174,7 @@ export const DataService = {
       }
     }
 
-    const localProfile: UserProfile = {
-      id: `usr_${Date.now()}`,
-      user_id: `usr_${Date.now()}`,
-      display_name: email.split('@')[0],
-      username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, ''),
-      avatar_url: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80`,
-      bio: 'New student on Hotspots!',
-      campus_id: MOCK_CAMPUSES[0].id,
-      campus_name: MOCK_CAMPUSES[0].name,
-      department: 'Computer Science',
-      level: 'Undergraduate',
-      interests: [],
-      skills: [],
-      goals: [],
-      is_onboarded: false,
-      created_at: now,
-      updated_at: now,
-    };
-    inMemoryProfiles.unshift(localProfile);
-    currentActiveUserId = localProfile.id;
-    return localProfile;
+    throw new Error('Supabase Auth is not configured. Please check environment variables.');
   },
 
   async signInWithSupabase(email: string, password: string): Promise<UserProfile> {
@@ -213,22 +195,24 @@ export const DataService = {
           return profileData as unknown as UserProfile;
         }
 
-        // Create profile if missing
+        // Create clean profile without assumed dummy data
         const newProfile: UserProfile = {
           id: data.user.id,
           user_id: data.user.id,
-          display_name: email.split('@')[0],
-          username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, ''),
-          avatar_url: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80`,
-          bio: 'Campus student on Hotspots!',
-          campus_id: MOCK_CAMPUSES[0].id,
-          campus_name: MOCK_CAMPUSES[0].name,
-          department: 'General Studies',
-          level: 'Undergraduate',
+          display_name: '',
+          username: '',
+          avatar_url: '',
+          bio: '',
+          campus_id: '',
+          campus_name: '',
+          department: '',
+          level: '',
           interests: [],
           skills: [],
           goals: [],
           is_onboarded: false,
+          role: 'user',
+          is_blocked: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -238,12 +222,10 @@ export const DataService = {
       }
     }
 
-    const current = inMemoryProfiles.find((p) => p.id === currentActiveUserId);
-    if (current) return current;
-    throw new Error('User account not found');
+    throw new Error('Supabase Auth is not configured. Please check environment variables.');
   },
 
-  async signInWithGoogle(): Promise<UserProfile> {
+  async signInWithGoogle(): Promise<UserProfile | null> {
     if (supabase) {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -252,32 +234,18 @@ export const DataService = {
         },
       });
       if (error) throw new Error(error.message);
+      return null;
     }
 
-    const googleProfile: UserProfile = {
-      id: 'usr_google',
-      user_id: 'usr_google',
-      display_name: 'Google Student',
-      username: 'googlestudent',
-      avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
-      bio: 'Signed in via Google',
-      campus_id: MOCK_CAMPUSES[0].id,
-      campus_name: MOCK_CAMPUSES[0].name,
-      department: 'Software Engineering',
-      level: 'Undergraduate',
-      interests: [],
-      skills: [],
-      goals: [],
-      is_onboarded: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    const idx = inMemoryProfiles.findIndex((p) => p.id === googleProfile.id);
-    if (idx === -1) {
-      inMemoryProfiles.unshift(googleProfile);
+    throw new Error('Supabase Auth is not configured. Please check environment variables.');
+  },
+
+  async signOut(): Promise<void> {
+    if (supabase) {
+      await supabase.auth.signOut();
     }
-    currentActiveUserId = googleProfile.id;
-    return googleProfile;
+    currentActiveUserId = '';
+    inMemoryProfiles = [];
   },
 
   async getCampuses(): Promise<Campus[]> {
@@ -326,15 +294,42 @@ export const DataService = {
             .single();
 
           if (profile) return profile as unknown as UserProfile;
+
+          // If authenticated but profile doesn't exist yet, create a clean unpopulated profile
+          const now = new Date().toISOString();
+          const newProfile: UserProfile = {
+            id: user.id,
+            user_id: user.id,
+            display_name: '',
+            username: '',
+            avatar_url: '',
+            bio: '',
+            campus_id: '',
+            campus_name: '',
+            department: '',
+            level: '',
+            interests: [],
+            skills: [],
+            goals: [],
+            is_onboarded: false,
+            role: 'user',
+            is_blocked: false,
+            created_at: now,
+            updated_at: now,
+          };
+          await supabase.from('profiles').upsert(newProfile);
+          currentActiveUserId = newProfile.id;
+          return newProfile;
         }
+        return null;
       } catch (e) {
         console.warn('Supabase getCurrentProfile error:', e);
+        return null;
       }
     }
 
     const current = inMemoryProfiles.find((p) => p.id === currentActiveUserId);
     if (current) return current;
-    if (inMemoryProfiles.length > 0) return inMemoryProfiles[0];
     return null;
   },
 
@@ -366,8 +361,8 @@ export const DataService = {
     const newProf: UserProfile = {
       id: currentActiveUserId,
       user_id: currentActiveUserId,
-      display_name: 'Student',
-      username: 'student',
+      display_name: '',
+      username: '',
       avatar_url: '',
       bio: '',
       campus_id: '',
@@ -377,7 +372,9 @@ export const DataService = {
       interests: [],
       skills: [],
       goals: [],
-      is_onboarded: true,
+      is_onboarded: false,
+      role: 'user',
+      is_blocked: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       ...profileData,
@@ -396,6 +393,146 @@ export const DataService = {
       }
     }
     return inMemoryProfiles;
+  },
+
+  // Admin Management APIs
+  async adminUpdateUserProfile(targetUserId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
+    const updated_at = new Date().toISOString();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .update({ ...updates, updated_at })
+          .eq('id', targetUserId)
+          .select()
+          .single();
+        if (!error && data) return data as unknown as UserProfile;
+      } catch (e) {
+        console.warn('Supabase adminUpdateUserProfile error:', e);
+      }
+    }
+
+    const idx = inMemoryProfiles.findIndex((p) => p.id === targetUserId || p.user_id === targetUserId);
+    if (idx !== -1) {
+      inMemoryProfiles[idx] = { ...inMemoryProfiles[idx], ...updates, updated_at };
+      return inMemoryProfiles[idx];
+    }
+    throw new Error('Target user profile not found');
+  },
+
+  async adminDeleteUserProfile(targetUserId: string): Promise<void> {
+    if (supabase) {
+      try {
+        await supabase.from('profiles').delete().eq('id', targetUserId);
+      } catch (e) {
+        console.warn('Supabase adminDeleteUserProfile error:', e);
+      }
+    }
+    inMemoryProfiles = inMemoryProfiles.filter((p) => p.id !== targetUserId && p.user_id !== targetUserId);
+  },
+
+  async adminAddCampus(campus: Omit<Campus, 'id'>): Promise<Campus> {
+    const newCampus: Campus = { id: `camp_${Date.now()}`, ...campus };
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('campuses').insert(newCampus).select().single();
+        if (!error && data) return data as Campus;
+      } catch (e) {
+        console.warn('Supabase adminAddCampus error:', e);
+      }
+    }
+    MOCK_CAMPUSES.push(newCampus);
+    return newCampus;
+  },
+
+  async adminDeleteCampus(campusId: string): Promise<void> {
+    if (supabase) {
+      try {
+        await supabase.from('campuses').delete().eq('id', campusId);
+      } catch (e) {
+        console.warn('Supabase adminDeleteCampus error:', e);
+      }
+    }
+    const idx = MOCK_CAMPUSES.findIndex((c) => c.id === campusId);
+    if (idx !== -1) MOCK_CAMPUSES.splice(idx, 1);
+  },
+
+  async adminAddInterest(interest: Omit<Interest, 'id'>): Promise<Interest> {
+    const newInterest: Interest = { id: `int_${Date.now()}`, ...interest };
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('interests').insert(newInterest).select().single();
+        if (!error && data) return data as Interest;
+      } catch (e) {
+        console.warn('Supabase adminAddInterest error:', e);
+      }
+    }
+    MOCK_INTERESTS.push(newInterest);
+    return newInterest;
+  },
+
+  async adminDeleteInterest(interestId: string): Promise<void> {
+    if (supabase) {
+      try {
+        await supabase.from('interests').delete().eq('id', interestId);
+      } catch (e) {
+        console.warn('Supabase adminDeleteInterest error:', e);
+      }
+    }
+    const idx = MOCK_INTERESTS.findIndex((i) => i.id === interestId);
+    if (idx !== -1) MOCK_INTERESTS.splice(idx, 1);
+  },
+
+  async adminAddSkill(skill: Omit<Skill, 'id'>): Promise<Skill> {
+    const newSkill: Skill = { id: `skl_${Date.now()}`, ...skill };
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('skills').insert(newSkill).select().single();
+        if (!error && data) return data as Skill;
+      } catch (e) {
+        console.warn('Supabase adminAddSkill error:', e);
+      }
+    }
+    MOCK_SKILLS.push(newSkill);
+    return newSkill;
+  },
+
+  async adminDeleteSkill(skillId: string): Promise<void> {
+    if (supabase) {
+      try {
+        await supabase.from('skills').delete().eq('id', skillId);
+      } catch (e) {
+        console.warn('Supabase adminDeleteSkill error:', e);
+      }
+    }
+    const idx = MOCK_SKILLS.findIndex((s) => s.id === skillId);
+    if (idx !== -1) MOCK_SKILLS.splice(idx, 1);
+  },
+
+  async adminAddGoal(goal: Omit<Goal, 'id'>): Promise<Goal> {
+    const newGoal: Goal = { id: `gol_${Date.now()}`, ...goal };
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('goals').insert(newGoal).select().single();
+        if (!error && data) return data as Goal;
+      } catch (e) {
+        console.warn('Supabase adminAddGoal error:', e);
+      }
+    }
+    MOCK_GOALS.push(newGoal);
+    return newGoal;
+  },
+
+  async adminDeleteGoal(goalId: string): Promise<void> {
+    if (supabase) {
+      try {
+        await supabase.from('goals').delete().eq('id', goalId);
+      } catch (e) {
+        console.warn('Supabase adminDeleteGoal error:', e);
+      }
+    }
+    const idx = MOCK_GOALS.findIndex((g) => g.id === goalId);
+    if (idx !== -1) MOCK_GOALS.splice(idx, 1);
   },
 
   async getConnections(): Promise<ConnectionRequest[]> {

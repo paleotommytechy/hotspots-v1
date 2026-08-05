@@ -26,6 +26,9 @@ export const TopBar: React.FC<TopBarProps> = ({ title }) => {
 
       <div className="flex items-center gap-2">
         {title && <span className="text-xs font-semibold text-[#414643] bg-gray-100 px-2.5 py-1 rounded-full">{title}</span>}
+        <Link href="/admin" className="text-[10px] font-extrabold bg-[#C62828] text-white px-2.5 py-1 rounded-full shadow-xs">
+          Admin
+        </Link>
         <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${isLive ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
           <ShieldCheck className="w-3 h-3" />
           {isLive ? 'Supabase Live' : 'Demo Mode'}

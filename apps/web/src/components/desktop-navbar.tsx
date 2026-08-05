@@ -17,6 +17,7 @@ export const DesktopNavbar: React.FC = () => {
     { href: '/connections', label: 'Connections', icon: Users },
     { href: '/messages', label: 'Messages', icon: MessageSquare },
     { href: '/profile', label: 'Profile', icon: User },
+    ...(isAuthenticated ? [{ href: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
   ];
 
   return (

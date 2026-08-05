@@ -9,7 +9,7 @@ import { Flame } from 'lucide-react';
 const PUBLIC_PATHS = ['/', '/auth'];
 
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const toast = useToast();
@@ -27,13 +27,20 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
         toast.warning('Please sign in to access this page');
       }
       router.replace('/auth');
-    } else if (isAuthenticated && isPublicPath && pathname === '/auth') {
-      hasWarnedRef.current = false;
-      router.replace('/discover');
+    } else if (isAuthenticated) {
+      const isOnboarded = Boolean(user?.is_onboarded && user?.display_name && user?.campus_id);
+      if (!isOnboarded && pathname !== '/onboarding') {
+        router.replace('/onboarding');
+      } else if (isOnboarded && (pathname === '/auth' || pathname === '/onboarding')) {
+        hasWarnedRef.current = false;
+        router.replace('/discover');
+      } else {
+        hasWarnedRef.current = false;
+      }
     } else {
       hasWarnedRef.current = false;
     }
-  }, [isAuthenticated, isLoading, isPublicPath, pathname, router, toast]);
+  }, [isAuthenticated, isLoading, isPublicPath, pathname, router, toast, user]);
 
   if (isLoading) {
     return (
