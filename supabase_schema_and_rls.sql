@@ -1,7 +1,7 @@
 -- ==========================================
 -- HOTSPOTS — COMPLETE SUPABASE DATABASE SCHEMA & RLS POLICIES
 -- ==========================================
--- Paste and execute this entire script in your Supabase SQL Editor.
+-- General-purpose hobby & interest discovery platform schema
 
 -- Enable UUID generation extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -10,7 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. TABLES DEFINITION
 -- ------------------------------------------
 
--- Campuses
+-- Campuses & Regional Hubs
 CREATE TABLE IF NOT EXISTS public.campuses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.campuses (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Interests Taxonomy
+-- Interests Taxonomy (Broad Hobby Categories)
 CREATE TABLE IF NOT EXISTS public.interests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL UNIQUE,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.skills (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Collaboration Goals
+-- Discovery & Collaboration Goals
 CREATE TABLE IF NOT EXISTS public.goals (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL UNIQUE,
@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     campus_id UUID REFERENCES public.campuses(id) ON DELETE SET NULL,
     department TEXT DEFAULT '',
     level TEXT DEFAULT '',
+    role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+    is_blocked BOOLEAN DEFAULT FALSE,
     social_links JSONB DEFAULT '{}'::jsonb,
     is_onboarded BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -187,7 +189,7 @@ ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 
--- Taxonomy & Profile Read Access (Public for Discovery)
+-- Read Policies
 CREATE POLICY "Allow public read on campuses" ON public.campuses FOR SELECT USING (true);
 CREATE POLICY "Allow public read on interests" ON public.interests FOR SELECT USING (true);
 CREATE POLICY "Allow public read on skills" ON public.skills FOR SELECT USING (true);
@@ -197,12 +199,42 @@ CREATE POLICY "Allow public read on user_interests" ON public.user_interests FOR
 CREATE POLICY "Allow public read on user_skills" ON public.user_skills FOR SELECT USING (true);
 CREATE POLICY "Allow public read on user_goals" ON public.user_goals FOR SELECT USING (true);
 CREATE POLICY "Allow public read on posts" ON public.posts FOR SELECT USING (true);
+
+-- Posts Write Policies
 CREATE POLICY "Allow auth users to create posts" ON public.posts FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Allow authors to update own posts" ON public.posts FOR UPDATE USING (auth.uid() IN (SELECT user_id FROM public.profiles WHERE id = author_id));
 
--- Authenticated User Write Permissions for Profiles
+-- Profile Write Permissions with Anti-Privilege Escalation CHECK
 CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (
+    auth.uid() = user_id AND (
+      (role = (SELECT p.role FROM public.profiles p WHERE p.user_id = auth.uid()) AND
+       is_blocked = (SELECT p.is_blocked FROM public.profiles p WHERE p.user_id = auth.uid()))
+      OR
+      (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.role = 'admin'))
+    )
+  );
+
+-- Admin Full Access Policies
+CREATE POLICY "Admins can manage all profiles" ON public.profiles FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.role = 'admin'));
+
+CREATE POLICY "Allow users to propose interests" ON public.interests FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Admins can manage interests" ON public.interests FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.role = 'admin'));
+
+CREATE POLICY "Admins can manage skills" ON public.skills FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.role = 'admin'));
+
+CREATE POLICY "Admins can manage goals" ON public.goals FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.role = 'admin'));
+
+CREATE POLICY "Admins can manage campuses" ON public.campuses FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = auth.uid() AND p.role = 'admin'));
 
 -- Connections Security
 CREATE POLICY "Read connections involved" ON public.connections FOR SELECT USING (
@@ -230,34 +262,60 @@ CREATE POLICY "Insert messages member" ON public.messages FOR INSERT WITH CHECK 
 -- 4. INITIAL TAXONOMY SEED DATA
 -- ------------------------------------------
 INSERT INTO public.campuses (name, code, city, region) VALUES
-('Tech Institute of Technology', 'TIT', 'Cambridge', 'MA'),
-('State University Campus', 'SUC', 'Austin', 'TX'),
-('Metropolitan Community College', 'MCC', 'Seattle', 'WA')
+('Greater Boston & Cambridge Hub', 'BOS', 'Cambridge', 'MA'),
+('Austin Creative District', 'ATX', 'Austin', 'TX'),
+('Pacific Northwest & Seattle Hub', 'SEA', 'Seattle', 'WA'),
+('San Francisco Bay Area Hub', 'SFB', 'San Francisco', 'CA'),
+('Online & Global Community', 'GLB', 'Global', 'Remote')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO public.interests (name, category, icon_slug) VALUES
-('React & Next.js', 'technology', 'code'),
-('UI/UX Design', 'design', 'figma'),
-('Artificial Intelligence', 'technology', 'cpu'),
-('Product Management', 'business', 'briefcase'),
-('Robotics & Hardware', 'technology', 'zap'),
-('Mobile App Dev', 'technology', 'smartphone'),
-('Digital Art & Motion', 'arts', 'image'),
-('Basketball & Fitness', 'sports', 'activity')
+('Board Games & Tabletop', 'gaming', 'dice'),
+('Dungeons & Dragons', 'gaming', 'shield'),
+('PC & Console Gaming', 'gaming', 'gamepad'),
+('Indie Game Dev', 'gaming', 'sparkles'),
+('Retro Gaming & Emulation', 'gaming', 'tv'),
+('Indie Rock & Guitar', 'music', 'music'),
+('Electronic Music & Synth', 'music', 'sliders'),
+('Vinyl & Record Collecting', 'music', 'disc'),
+('Piano & Classical', 'music', 'headphones'),
+('Digital Illustration', 'arts', 'pen-tool'),
+('Ceramics & Pottery', 'arts', 'heart'),
+('Photography & 35mm Film', 'arts', 'camera'),
+('3D Modeling & Blender', 'arts', 'box'),
+('Mechanical Keyboards', 'crafts', 'keyboard'),
+('Cosplay & Prop Making', 'crafts', 'scissors'),
+('3D Printing & CAD', 'crafts', 'printer'),
+('Rock Climbing & Bouldering', 'outdoors', 'mountain'),
+('Hiking & Trail Running', 'outdoors', 'compass'),
+('Gardening & Urban Farming', 'outdoors', 'sun'),
+('Specialty Coffee & Espresso', 'food', 'coffee'),
+('Sourdough & Baking', 'food', 'cake'),
+('Tea Brewing & Culture', 'food', 'cup-soda'),
+('Anime & Manga', 'fandom', 'tv'),
+('Sci-Fi & Fantasy Novels', 'reading', 'book'),
+('Vintage Fashion & Thrifting', 'collecting', 'shopping-bag'),
+('Creative Coding & Gen Art', 'technology', 'code'),
+('Astronomy & Stargazing', 'science', 'moon')
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO public.skills (name, category) VALUES
-('TypeScript', 'Development'),
-('Figma & Prototyping', 'Design'),
-('Python & PyTorch', 'Data Science'),
-('User Interviewing', 'Research'),
-('Tailwind CSS', 'Development'),
-('System Architecture', 'Engineering')
+('Tabletop Game Mastering (DM)', 'Gaming'),
+('Guitar & Bass Playing', 'Music'),
+('Digital Illustration & Procreate', 'Arts'),
+('3D Modeling & Blender', 'Design'),
+('Sourdough Baking & Fermentation', 'Culinary'),
+('Bouldering & Route Reading', 'Outdoors'),
+('Prop Making & Foam Crafting', 'Crafts'),
+('Espresso Dialing & Latte Art', 'Culinary'),
+('Creative Coding & TypeScript', 'Development'),
+('35mm Film Photography', 'Media')
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO public.goals (name, description) VALUES
-('Build a Hackathon Project', 'Co-found a team for upcoming hackathon'),
-('Find a Co-Founder', 'Looking for technical or design co-founder'),
-('Peer Mentorship & Learning', 'Exchange skills and code review'),
-('Casual Study Group', 'Meet up regularly to study and collaborate')
+('Casual Hangouts & Meetups', 'Meet local hobbyists for coffee, walks, or casual hangouts'),
+('Creative Collaboration', 'Collaborate on art, zines, games, music, or DIY projects'),
+('Jamming & Gaming Sessions', 'Play music, run tabletop campaigns, or queue up for game nights'),
+('Skill Exchange & Learning', 'Share knowledge, give tips, and learn new crafts together'),
+('Outdoor & Activity Partner', 'Explore trails, climb routes, skate, or attend local events together')
 ON CONFLICT (name) DO NOTHING;

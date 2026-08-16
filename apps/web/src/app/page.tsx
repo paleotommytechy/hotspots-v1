@@ -8,7 +8,7 @@ import { Post } from '@hotspots/types';
 import { FeedPostCard } from '../components/feed-post-card';
 import { CreatePostModal } from '../components/create-post-modal';
 import { Button, Avatar, useToast, CardSkeleton } from '@hotspots/ui-web';
-import { Flame, Compass, Sparkles, Plus, Zap, ArrowRight, ShieldCheck, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Flame, Compass, Sparkles, Plus, Zap, ArrowRight, ShieldCheck, CheckCircle2, MessageSquare, HeartHandshake, Compass as CompassIcon } from 'lucide-react';
 
 export default function RootPage() {
   const { isAuthenticated, user } = useAuth();
@@ -45,7 +45,7 @@ export default function RootPage() {
   const handleCreatePost = async (content: string, imageUrl?: string, interestTags?: string[]) => {
     const newPost = await DataService.createPost(content, imageUrl, interestTags);
     setPosts((prev) => [newPost, ...prev]);
-    toast.success('Post published to campus feed!');
+    toast.success('Post published to community feed!');
   };
 
   // 1. Authenticated Experience: Dynamic Community Activity Feed
@@ -58,7 +58,7 @@ export default function RootPage() {
             <Avatar src={user.avatar_url} name={user.display_name} size="md" />
             <div className="min-w-0">
               <h3 className="font-extrabold text-sm text-[#2B2B2B] truncate">Welcome back, {user.display_name}!</h3>
-              <p className="text-[11px] text-[#619B8A] truncate">What's happening on campus today?</p>
+              <p className="text-[11px] text-[#619B8A] truncate">What are you making, playing, or exploring today?</p>
             </div>
           </div>
           <Button
@@ -67,14 +67,14 @@ export default function RootPage() {
             onClick={() => setIsPostModalOpen(true)}
             className="rounded-2xl px-4 py-2.5 shrink-0 shadow-md"
           >
-            <Plus className="w-4 h-4 mr-1.5 stroke-[3px]" /> Post Update
+            <Plus className="w-4 h-4 mr-1.5 stroke-[3px]" /> Share Update
           </Button>
         </div>
 
         {/* Feed Header */}
         <div className="flex items-center justify-between px-1">
           <h2 className="text-xl font-extrabold text-[#2B2B2B] flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#C62828]" /> Community Activity Feed
+            <Sparkles className="w-5 h-5 text-[#C62828]" /> Community Passion Feed
           </h2>
           <span className="text-xs text-[#619B8A] font-bold">{posts.length} Active Posts</span>
         </div>
@@ -115,25 +115,25 @@ export default function RootPage() {
       <section className="text-center space-y-6 max-w-4xl mx-auto px-2">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF3C4] border border-[#FFC857] text-[#C62828] text-xs font-extrabold shadow-sm animate-bounce">
           <Sparkles className="w-4 h-4 fill-[#C62828]" />
-          <span>The Campus & Community Matchmaking Platform</span>
+          <span>The General-Purpose Hobby & Interest Discovery Platform</span>
         </div>
 
         <div className="space-y-4">
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-[#2B2B2B] leading-tight">
             Stop Searching. <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-[#C62828] via-[#F57C00] to-[#E06C00] bg-clip-text text-transparent">
-              Find People Who Click With You.
+              Find People Who Share Your Passions.
             </span>
           </h1>
           <p className="text-sm sm:text-lg text-[#414643] leading-relaxed max-w-2xl mx-auto font-medium">
-            Hotspots pairs campus students and tech collaborators based on shared interests, complementary skills, and real collaboration goals.
+            From indie game developers and musicians to bouldering partners and tabletop DMs, Hotspots pairs creators, hobbyists, and enthusiasts based on genuine mutual interests.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-md mx-auto">
           <Link href="/auth" className="w-full sm:w-auto flex-1">
             <Button variant="primary" size="lg" fullWidth className="shadow-lg py-3.5 rounded-2xl">
-              Get Started Free <ArrowRight className="w-4 h-4 ml-2" />
+              Explore & Discover <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
           <a href="#how-it-works" className="w-full sm:w-auto flex-1">
@@ -146,15 +146,17 @@ export default function RootPage() {
         <div className="flex items-center justify-center gap-4 text-xs text-[#414643] font-bold pt-3">
           <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-600" /> Free & Safe</span>
           <span>•</span>
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Verified Students</span>
+          <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Inclusive Community</span>
+          <span>•</span>
+          <span className="flex items-center gap-1.5"><HeartHandshake className="w-4 h-4 text-emerald-600" /> Real Connections</span>
         </div>
       </section>
 
       {/* Feature Grid */}
       <section className="space-y-6">
         <div className="text-center space-y-2">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-[#2B2B2B]">Why Students Choose Hotspots</h2>
-          <p className="text-xs md:text-sm text-[#414643]">Designed specifically to solve cold-outreach & hackathon team discovery.</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-[#2B2B2B]">Why People Love Hotspots</h2>
+          <p className="text-xs md:text-sm text-[#414643]">Designed specifically to connect you through your favorite hobbies and creative projects.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -162,9 +164,9 @@ export default function RootPage() {
             <div className="w-12 h-12 rounded-2xl bg-[#C62828]/10 text-[#C62828] flex items-center justify-center font-bold">
               <Zap className="w-6 h-6" />
             </div>
-            <h3 className="font-extrabold text-base text-[#2B2B2B]">90%+ Match Engine</h3>
+            <h3 className="font-extrabold text-base text-[#2B2B2B]">Interest-First Matching</h3>
             <p className="text-xs text-[#414643] leading-relaxed">
-              Our deterministic algorithm weights shared interests (40%), skills (25%), and goals (20%) so you match with people you actually click with.
+              Our matching engine prioritizes overlapping passions and creative goals so you discover people with whom you immediately have something in common.
             </p>
           </div>
 
@@ -172,9 +174,9 @@ export default function RootPage() {
             <div className="w-12 h-12 rounded-2xl bg-[#F57C00]/10 text-[#F57C00] flex items-center justify-center font-bold">
               <Sparkles className="w-6 h-6" />
             </div>
-            <h3 className="font-extrabold text-base text-[#2B2B2B]">Zero-Awkwardness</h3>
+            <h3 className="font-extrabold text-base text-[#2B2B2B]">Built-In Icebreakers</h3>
             <p className="text-xs text-[#414643] leading-relaxed">
-              Every profile displays exact match explanations before you connect, giving you built-in icebreakers for instant conversation.
+              Every match card reveals shared interests and collaboration focus before you reach out, eliminating awkward first introductions.
             </p>
           </div>
 
@@ -184,7 +186,7 @@ export default function RootPage() {
             </div>
             <h3 className="font-extrabold text-base text-[#2B2B2B]">Direct 1-on-1 Chat</h3>
             <p className="text-xs text-[#414643] leading-relaxed">
-              Once a connection request is accepted, unlock direct 1-to-1 messaging to schedule meetups or start building projects together.
+              Once mutual interest is established, jump right into direct conversations to plan game nights, organize jams, or share craft tips.
             </p>
           </div>
         </div>
@@ -201,19 +203,19 @@ export default function RootPage() {
           <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 space-y-2">
             <span className="w-8 h-8 rounded-full bg-white text-[#C62828] font-black text-sm flex items-center justify-center shadow-xs">1</span>
             <h4 className="font-extrabold text-base">Select Your Passions</h4>
-            <p className="text-xs opacity-90 leading-relaxed">Pick interests like React, UI/UX, AI, hardware, and study goals in 30 seconds.</p>
+            <p className="text-xs opacity-90 leading-relaxed">Pick from dozens of hobby categories or propose your own custom tags in seconds.</p>
           </div>
 
           <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 space-y-2">
             <span className="w-8 h-8 rounded-full bg-white text-[#C62828] font-black text-sm flex items-center justify-center shadow-xs">2</span>
-            <h4 className="font-extrabold text-base">Explore Scored Cards</h4>
-            <p className="text-xs opacity-90 leading-relaxed">View ordered candidate cards with match score percentages and shared interest chips.</p>
+            <h4 className="font-extrabold text-base">Discover Compatible People</h4>
+            <p className="text-xs opacity-90 leading-relaxed">Browse scored cards showing shared hobbies, complementary skills, and creative vibes.</p>
           </div>
 
           <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 space-y-2">
             <span className="w-8 h-8 rounded-full bg-white text-[#C62828] font-black text-sm flex items-center justify-center shadow-xs">3</span>
             <h4 className="font-extrabold text-base">Connect & Collaborate</h4>
-            <p className="text-xs opacity-90 leading-relaxed">Send connection requests and chat directly to build hackathon projects or study together.</p>
+            <p className="text-xs opacity-90 leading-relaxed">Send a connection request with a personalized note and start collaborating or hanging out.</p>
           </div>
         </div>
       </section>
@@ -225,11 +227,11 @@ export default function RootPage() {
         </div>
         <div className="space-y-2 max-w-xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-extrabold text-[#2B2B2B]">Ready to Find Your People?</h2>
-          <p className="text-xs md:text-sm text-[#414643]">Join hundreds of campus creators, developers, and designers on Hotspots today.</p>
+          <p className="text-xs md:text-sm text-[#414643]">Join creators, tabletop adventurers, musicians, and hobby enthusiasts discovering new friends today.</p>
         </div>
         <Link href="/auth" className="inline-block">
           <Button variant="primary" size="lg" className="px-8 py-3.5 rounded-2xl shadow-lg">
-            Create Your Account <ArrowRight className="w-4 h-4 ml-2" />
+            Get Started Free <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </Link>
       </section>

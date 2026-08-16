@@ -6,7 +6,7 @@ import { ProtectedRoute } from '../components/protected-route';
 import { AppShell } from '../components/app-shell';
 
 export const metadata: Metadata = {
-  title: 'Hotspots — Find Your People',
+  title: 'Hotspots | Find Your People',
   description: 'Mobile-first PWA and desktop interest-based matchmaking platform.',
   manifest: '/manifest.json',
   appleWebApp: {

@@ -10,7 +10,16 @@ interface CreatePostModalProps {
   onSubmit: (content: string, imageUrl?: string, interestTags?: string[]) => void;
 }
 
-const SAMPLE_TAGS = ['React & Next.js', 'UI/UX Design', 'Artificial Intelligence', 'Hackathon Project', 'Study Group'];
+const SAMPLE_TAGS = [
+  'Tabletop Games',
+  'Indie Music',
+  'Digital Art & Illustration',
+  'Rock Climbing & Bouldering',
+  'Mechanical Keyboards',
+  'Specialty Coffee',
+  'Cosplay & Props',
+  'Indie Game Dev',
+];
 
 export const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const [content, setContent] = useState('');
@@ -59,13 +68,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClos
             rows={4}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="What's happening on campus? Share a project idea, question, or meetup goal..."
+            placeholder="Share a new project, looking for a squad/jam partner, or asking for hobby recommendations..."
             className="w-full text-xs md:text-sm p-3.5 rounded-2xl border border-gray-200 bg-gray-50/50 text-[#2B2B2B] focus:outline-none focus:ring-2 focus:ring-[#C62828] resize-none"
           />
 
           {/* Interest Tags Picker */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-[#414643] block">Add Interest Tags</label>
+            <label className="text-[11px] font-bold text-[#414643] block">Tag Related Passions</label>
             <div className="flex flex-wrap gap-1.5">
               {SAMPLE_TAGS.map((tag) => (
                 <Chip

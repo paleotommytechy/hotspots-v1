@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, Users, MessageSquare, User, Flame, LogOut, ShieldCheck, Building2 } from 'lucide-react';
+import { Home, Compass, Users, MessageSquare, User, Flame, LogOut, ShieldCheck, MapPin } from 'lucide-react';
 import { useAuth } from '../context/auth-context';
 import { Avatar } from '@hotspots/ui-web';
 
@@ -11,17 +11,16 @@ export const DesktopSidebar: React.FC = () => {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
 
-  // Hide sidebar on public marketing page if desired or show minimal
   const navItems = [
     { href: '/', label: 'Home', icon: Home },
-    { href: '/discover', label: 'Discover People', icon: Compass },
+    { href: '/discover', label: 'Discover Passions', icon: Compass },
     { href: '/connections', label: 'Connections', icon: Users },
     { href: '/messages', label: 'Messages', icon: MessageSquare },
     { href: '/profile', label: 'My Profile', icon: User },
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r border-[#EAE3C3]/80 bg-white/80 backdrop-blur-2xl p-5 sticky top-0 h-screen shrink-0 justify-between shadow-xs">
+    <aside className="hidden md:flex flex-col w-64 border-r border-[#EAE3C3]/80 bg-white/80 backdrop-blur-2xl p-5 sticky top-0 h-screen shrink-0 justify-between shadow-xs text-left">
       {/* Top Header & Navigation */}
       <div className="space-y-6">
         {/* Branding */}
@@ -34,7 +33,7 @@ export const DesktopSidebar: React.FC = () => {
               HOTSPOTS
             </span>
             <span className="text-[10px] text-[#619B8A] font-extrabold tracking-wider uppercase mt-1 block">
-              Matchmaking
+              Hobby & Passions
             </span>
           </div>
         </Link>
@@ -43,7 +42,7 @@ export const DesktopSidebar: React.FC = () => {
         <div className="px-2">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full w-full justify-center bg-emerald-50 text-emerald-800 border border-emerald-200/60">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Campus Network Verified</span>
+            <span>Inclusive Community</span>
           </span>
         </div>
 
@@ -82,10 +81,10 @@ export const DesktopSidebar: React.FC = () => {
               <Avatar src={user.avatar_url} name={user.display_name} size="md" />
               <div className="min-w-0 flex-1">
                 <h4 className="font-bold text-xs text-[#2B2B2B] truncate">{user.display_name}</h4>
-                <p className="text-[11px] text-[#414643] truncate">{user.department}</p>
+                <p className="text-[11px] text-[#414643] truncate">{user.department || 'Enthusiast'}</p>
                 {user.campus_name && (
                   <div className="flex items-center gap-1 text-[10px] text-[#619B8A] mt-0.5">
-                    <Building2 className="w-3 h-3 shrink-0" />
+                    <MapPin className="w-3 h-3 shrink-0" />
                     <span className="truncate">{user.campus_name}</span>
                   </div>
                 )}

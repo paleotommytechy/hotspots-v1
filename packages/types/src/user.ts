@@ -9,7 +9,23 @@ export interface Campus {
 export interface Interest {
   id: string;
   name: string;
-  category: 'technology' | 'design' | 'business' | 'arts' | 'science' | 'sports' | 'lifestyle';
+  category:
+    | 'gaming'
+    | 'music'
+    | 'arts'
+    | 'crafts'
+    | 'outdoors'
+    | 'sports'
+    | 'food'
+    | 'fandom'
+    | 'technology'
+    | 'collecting'
+    | 'lifestyle'
+    | 'science'
+    | 'reading'
+    | 'design'
+    | 'business'
+    | 'general';
   icon_slug?: string;
 }
 

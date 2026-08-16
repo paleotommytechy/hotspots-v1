@@ -1,6 +1,6 @@
 {
   "name": "Hotspots",
-  "description": "Campus and community interest-based matchmaking platform.",
+  "description": "General-purpose hobby and interest discovery platform connecting creators, musicians, gamers, and enthusiasts.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, Users, MessageSquare, User, Flame, LogOut, ShieldCheck, Building2 } from 'lucide-react';
+import { Home, Compass, Users, MessageSquare, User, Flame, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/auth-context';
 import { Avatar } from '@hotspots/ui-web';
 
@@ -32,7 +32,7 @@ export const DesktopNavbar: React.FC = () => {
             HOTSPOTS
           </span>
           <span className="text-[9px] text-[#619B8A] font-extrabold tracking-wider uppercase">
-            Campus Matchmaking
+            Hobby & Passion Discovery
           </span>
         </div>
       </Link>
@@ -75,7 +75,7 @@ export const DesktopNavbar: React.FC = () => {
                   {user.display_name}
                 </span>
                 <span className="text-[10px] text-[#619B8A] block truncate max-w-[120px]">
-                  {user.campus_name || user.department}
+                  {user.department || user.campus_name || 'Member'}
                 </span>
               </div>
             </Link>

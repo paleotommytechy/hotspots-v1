@@ -1,13 +1,13 @@
 import { Campus, Interest, Skill, Goal, UserProfile, ConnectionRequest, Conversation, Message, Post, PostComment } from '@hotspots/types';
 import { supabase, isSupabaseConfigured } from './client';
-import { MOCK_CAMPUSES, MOCK_INTERESTS, MOCK_SKILLS, MOCK_GOALS } from './mockData';
+import { MOCK_CAMPUSES, MOCK_INTERESTS, MOCK_SKILLS, MOCK_GOALS, MOCK_PROFILES, MOCK_POSTS, MOCK_CONNECTIONS, MOCK_CONVERSATIONS, MOCK_MESSAGES } from './mockData';
 
-let inMemoryProfiles: UserProfile[] = [];
-let inMemoryPosts: Post[] = [];
-let inMemoryConnections: ConnectionRequest[] = [];
-let inMemoryConversations: Conversation[] = [];
-let inMemoryMessages: Record<string, Message[]> = {};
-let currentActiveUserId = 'usr_guest';
+let inMemoryProfiles: UserProfile[] = [...MOCK_PROFILES];
+let inMemoryPosts: Post[] = [...MOCK_POSTS];
+let inMemoryConnections: ConnectionRequest[] = [...MOCK_CONNECTIONS];
+let inMemoryConversations: Conversation[] = [...MOCK_CONVERSATIONS];
+let inMemoryMessages: Record<string, Message[]> = { ...MOCK_MESSAGES };
+let currentActiveUserId = 'usr_me';
 
 function isValidUuid(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -41,7 +41,7 @@ export const DataService = {
           .from('posts')
           .select('*')
           .order('created_at', { ascending: false });
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
           return data as Post[];
         }
       } catch (e) {
@@ -56,7 +56,7 @@ export const DataService = {
     const newPost: Post = {
       id: `post_${Date.now()}`,
       author_id: cur ? cur.id : 'anon',
-      author_name: cur ? cur.display_name : 'Anonymous Student',
+      author_name: cur ? cur.display_name : 'Community Member',
       author_avatar: cur ? cur.avatar_url : '',
       author_campus: cur ? cur.campus_name : '',
       content,
@@ -123,7 +123,7 @@ export const DataService = {
       id: `cmt_${Date.now()}`,
       post_id: postId,
       author_id: cur ? cur.id : 'anon',
-      author_name: cur ? cur.display_name : 'Anonymous Student',
+      author_name: cur ? cur.display_name : 'Community Member',
       author_avatar: cur ? cur.avatar_url : '',
       content,
       created_at: new Date().toISOString(),
@@ -188,7 +188,31 @@ export const DataService = {
       }
     }
 
-    throw new Error('Supabase Auth is not configured. Please check environment variables.');
+    // Local fallback demo signup
+    const fallbackId = `usr_${Date.now()}`;
+    const newProfile: UserProfile = {
+      id: fallbackId,
+      user_id: fallbackId,
+      display_name: email.split('@')[0],
+      username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
+      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+      bio: '',
+      campus_id: '',
+      campus_name: '',
+      department: '',
+      level: '',
+      interests: [],
+      skills: [],
+      goals: [],
+      is_onboarded: false,
+      role: 'user',
+      is_blocked: false,
+      created_at: now,
+      updated_at: now,
+    };
+    currentActiveUserId = newProfile.id;
+    inMemoryProfiles.push(newProfile);
+    return newProfile;
   },
 
   async signInWithSupabase(email: string, password: string): Promise<UserProfile> {
@@ -233,7 +257,6 @@ export const DataService = {
           return merged;
         }
 
-        // Create clean profile without assumed dummy data
         const newProfile: UserProfile = {
           id: data.user.id,
           user_id: data.user.id,
@@ -261,7 +284,10 @@ export const DataService = {
       }
     }
 
-    throw new Error('Supabase Auth is not configured. Please check environment variables.');
+    // Local fallback demo sign-in
+    const existing = inMemoryProfiles[0] || MOCK_PROFILES[0];
+    currentActiveUserId = existing.id;
+    return existing;
   },
 
   async signInWithGoogle(): Promise<UserProfile | null> {
@@ -276,15 +302,16 @@ export const DataService = {
       return null;
     }
 
-    throw new Error('Supabase Auth is not configured. Please check environment variables.');
+    const existing = inMemoryProfiles[0] || MOCK_PROFILES[0];
+    currentActiveUserId = existing.id;
+    return existing;
   },
 
   async signOut(): Promise<void> {
     if (supabase) {
       await supabase.auth.signOut();
     }
-    currentActiveUserId = '';
-    inMemoryProfiles = [];
+    currentActiveUserId = 'usr_guest';
   },
 
   async getCampuses(): Promise<Campus[]> {
@@ -310,8 +337,8 @@ export const DataService = {
         if (!intRes.error && intRes.data && intRes.data.length > 0) {
           return {
             interests: intRes.data as Interest[],
-            skills: (sklRes.data || MOCK_SKILLS) as Skill[],
-            goals: (golRes.data || MOCK_GOALS) as Goal[],
+            skills: (sklRes.data && sklRes.data.length > 0 ? sklRes.data : MOCK_SKILLS) as Skill[],
+            goals: (golRes.data && golRes.data.length > 0 ? golRes.data : MOCK_GOALS) as Goal[],
           };
         }
       } catch (e) {
@@ -319,6 +346,40 @@ export const DataService = {
       }
     }
     return { interests: MOCK_INTERESTS, skills: MOCK_SKILLS, goals: MOCK_GOALS };
+  },
+
+  async proposeInterestTag(name: string, category: string = 'general'): Promise<Interest> {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error('Interest name cannot be empty');
+
+    const existing = MOCK_INTERESTS.find((i) => i.name.toLowerCase() === trimmed.toLowerCase());
+    if (existing) return existing;
+
+    const newInterest: Interest = {
+      id: `int_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      name: trimmed,
+      category: (category as any) || 'general',
+      icon_slug: 'sparkles',
+    };
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('interests')
+          .insert({ name: newInterest.name, category: newInterest.category, icon_slug: newInterest.icon_slug })
+          .select()
+          .single();
+        if (!error && data) {
+          MOCK_INTERESTS.push(data as Interest);
+          return data as Interest;
+        }
+      } catch (e) {
+        console.warn('Supabase proposeInterestTag error:', e);
+      }
+    }
+
+    MOCK_INTERESTS.push(newInterest);
+    return newInterest;
   },
 
   async getCurrentProfile(): Promise<UserProfile | null> {
@@ -361,7 +422,6 @@ export const DataService = {
             return merged;
           }
 
-          // If authenticated but profile doesn't exist yet, create a clean unpopulated profile
           const now = new Date().toISOString();
           const newProfile: UserProfile = {
             id: user.id,
@@ -397,7 +457,7 @@ export const DataService = {
 
     const current = inMemoryProfiles.find((p) => p.id === currentActiveUserId || p.user_id === currentActiveUserId);
     if (current) return current;
-    return null;
+    return inMemoryProfiles[0] || null;
   },
 
   async updateProfile(profileData: Partial<UserProfile>): Promise<UserProfile> {
@@ -491,7 +551,7 @@ export const DataService = {
     if (supabase) {
       try {
         const { data, error } = await supabase.from('profiles').select('*');
-        if (!error && data) return data as unknown as UserProfile[];
+        if (!error && data && data.length > 0) return data as unknown as UserProfile[];
       } catch (e) {
         console.warn('Supabase getAllProfiles error:', e);
       }
@@ -644,7 +704,7 @@ export const DataService = {
     if (supabase) {
       try {
         const { data, error } = await supabase.from('connections').select('*');
-        if (!error && data) return data as ConnectionRequest[];
+        if (!error && data && data.length > 0) return data as ConnectionRequest[];
       } catch (e) {
         console.warn('Supabase getConnections error:', e);
       }
@@ -708,7 +768,7 @@ export const DataService = {
     if (supabase) {
       try {
         const { data, error } = await supabase.from('conversations').select('*');
-        if (!error && data) return data as unknown as Conversation[];
+        if (!error && data && data.length > 0) return data as unknown as Conversation[];
       } catch (e) {
         console.warn('Supabase getConversations error:', e);
       }
@@ -724,7 +784,7 @@ export const DataService = {
           .select('*')
           .eq('conversation_id', conversationId)
           .order('created_at', { ascending: true });
-        if (!error && data) return data as Message[];
+        if (!error && data && data.length > 0) return data as Message[];
       } catch (e) {
         console.warn('Supabase getMessages error:', e);
       }
