@@ -292,11 +292,24 @@ export const DataService = {
 
   async signInWithGoogle(): Promise<UserProfile | null> {
     if (supabase) {
+      const APP_URL =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        (typeof process !== 'undefined' ? process.env.APP_URL : undefined) ||
+        (typeof window !== 'undefined' && window.location.origin
+          ? window.location.origin
+          : 'https://hotspots-v1.vercel.app');
+
+      const cleanAppUrl = APP_URL.replace(/\/$/, '');
+      const redirectTarget = cleanAppUrl.endsWith('/auth/callback')
+        ? cleanAppUrl
+        : `${cleanAppUrl}/auth/callback`;
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/discover` : undefined,
-        },
+          redirectTo: redirectTarget,
+          flowType: 'pkce',
+        } as any,
       });
       if (error) throw new Error(error.message);
       return null;

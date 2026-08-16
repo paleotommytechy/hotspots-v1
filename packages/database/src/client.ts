@@ -7,7 +7,13 @@ const supabaseSecretKey = process.env.SUPABASE_SECRET || supabaseAnonKey;
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        flowType: 'pkce',
+        detectSessionInUrl: true,
+        persistSession: true,
+      },
+    })
   : null;
 
 export function getAdminSupabaseClient() {
